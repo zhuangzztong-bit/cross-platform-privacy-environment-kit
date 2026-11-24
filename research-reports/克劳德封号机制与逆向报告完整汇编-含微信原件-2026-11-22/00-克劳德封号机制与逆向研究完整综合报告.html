@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>克劳德（Claude）封号与风控机制：逆向报告完整研究汇编</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #0f766e;
+    --accent-soft: #f0fdfa;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 20px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.72;
+    font-size: 15px;
+  }
+  .layout {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .sidebar {
+    position: sticky;
+    top: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    font-size: 13px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 10px;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+  .sidebar ul {
+    list-style: none;
+    padding-left: 12px;
+    margin: 4px 0;
+  }
+  .sidebar > .toc > ul { padding-left: 0; }
+  .sidebar li { margin: 5px 0; }
+  .sidebar a {
+    color: var(--muted);
+    text-decoration: none;
+    display: block;
+    line-height: 1.45;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  main {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 36px 42px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  h1 {
+    font-size: 26px;
+    line-height: 1.3;
+    margin-top: 0;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--accent);
+    color: #0f172a;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: 34px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #0f172a;
+  }
+  h3 {
+    font-size: 16.5px;
+    margin-top: 24px;
+    color: var(--accent);
+  }
+  blockquote {
+    margin: 16px 0;
+    padding: 12px 18px;
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    color: #134e4a;
+  }
+  blockquote p { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 22px;
+    font-size: 13.5px;
+    display: block;
+    overflow-x: auto;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 9px 11px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f1f5f9;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tr:nth-child(even) td { background: #fcfdff; }
+  code {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: Consolas, "Cascadia Code", Menlo, monospace;
+    font-size: 0.9em;
+    word-break: break-word;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+  a {
+    color: #0369a1;
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
+  hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 26px 0;
+  }
+  ul, ol { padding-left: 22px; }
+  li { margin: 6px 0; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: static; max-height: none; }
+    main { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">目录导航</div>
+      <div class="toc">
+<ul>
+<li><a href="#claude-github-18">克劳德（Claude）封号与风控机制：逆向报告完整研究汇编（含微信原件与 GitHub 18 份资料）</a><ul>
+<li><a href="#_1">一、核心结论摘要</a></li>
+<li><a href="#github">二、GitHub 逆向与审计仓库全景索引</a></li>
+<li><a href="#_2">三、四端真实信号采集全景（源码与抓包实证）</a><ul>
+<li><a href="#31">3.1 跨端核心指标对照表</a></li>
+<li><a href="#32-web-sift-1x1-gif">3.2 Web 端：Sift 1x1 GIF 隐蔽信标与证明链【源码/抓包实证】</a></li>
+<li><a href="#33-android">3.3 Android 端：全链路硬件与网络探针【源码/抓包实证】</a></li>
+<li><a href="#34-desktop-cli">3.4 Desktop 与 CLI：未登录发包、明文中转与跨端关联边界【源码/抓包实证】</a></li>
+<li><a href="#35-windows-msix5114925">3.5 与本地微信两份 Windows MSIX（5.11492.5）静态逆向笔记的交叉对照【源码/静态实证】</a></li>
+</ul>
+</li>
+<li><a href="#_3">四、克劳德封号机制的四大核心触发链路</a><ul>
+<li><a href="#41">4.1 链路一：环境与地理立体交叉校验（外围域名分裂是高频雷区）</a></li>
+<li><a href="#42-oauth-cch">4.2 链路二：反套利与客户端真伪校验（订阅 OAuth 封堵与 cch 签名）</a></li>
+<li><a href="#43-3-bit">4.3 链路三：反蒸馏与中转溯源（3-bit 提示词隐写术实证）</a></li>
+<li><a href="#44-persona-3d-kyc">4.4 链路四：支付风控、服务端行为分类器与 Persona 3D KYC</a></li>
+</ul>
+</li>
+<li><a href="#5">五、源码逆向直接证伪的 5 个常见误区</a></li>
+<li><a href="#_4">六、研究边界与声明</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="claude-github-18">克劳德（Claude）封号与风控机制：逆向报告完整研究汇编（含微信原件与 GitHub 18 份资料）</h1>
+<blockquote>
+<p><strong>整理日期</strong>：2026-11-22<br />
+<strong>研究范围</strong>：基于 GitHub 公开的 18 份源码级逆向审计、真机动态抓包、二进制反汇编与多源政策调研报告交叉核验；同时衔接此前两份 Windows Desktop MSIX（<code>5.11492.5</code>）静态逆向笔记与 <code>fuck-claude.vercel.app</code> 实测的盲区补证。<br />
+<strong>证据分级约定</strong>：<br />
+- <strong>【源码/抓包实证】</strong>：有反编译代码、二进制反汇编、行号定位或真实网络抓包互证的客户端事实。<br />
+- <strong>【官方/多源证据】</strong>：来自 Anthropic 官方文档、Transparency Hub 数据、员工公开表态或多源独立案例互证。<br />
+- <strong>【服务端推断】</strong>：Anthropic 后端引擎属闭源黑盒，仅能由客户端上行载荷、返回错误与官方口径反推。</p>
+</blockquote>
+<hr />
+<h2 id="_1">一、核心结论摘要</h2>
+<ol>
+<li><strong>封号不是“前端中文特征打分器”，而是五层复合风控体系</strong>：Anthropic 的真实风控链路贯穿 <strong>网络与 IP/ASN 层 → 客户端遥测与指纹层（Sift / Datadog / Sentry / GrowthBook）→ 请求协议与客户端真伪校验层（OAuth / <code>cch</code> 签名 / Beta 与工具形状）→ 支付与 Persona 3D 活体 KYC 层 → 服务端反滥用/反蒸馏分类器</strong>。</li>
+<li><strong>处罚分两条独立轨道</strong>【官方/多源证据】：
+   - <strong>Token / 请求级拒收</strong>：把 Pro/Max 订阅 OAuth Token 挪用于非官方客户端（包括第三方套壳、甚至自家 Agent SDK）时，服务端直接拒收请求（429/鉴权失败），但账号本身未必立刻封禁，换回官方客户端可能恢复。
+   - <strong>账号级永久封禁</strong>：由反滥用/反欺诈分类器自动触发，余额通常不退；官方 Transparency Hub 2025 下半年数据显示，累计封禁约 <strong>145 万账号</strong>、收到约 <strong>5.2 万次申诉</strong>、仅约 <strong>1,700 例翻盘（≈ 3.3%）</strong>。</li>
+<li><strong>跨端泄露强度差异巨大</strong>【源码/抓包实证】：
+   - <strong>Android 端采集最重</strong>：是三端中唯一把不可重置的系统级 <code>ANDROID_ID</code>（SSAID）原值交给第三方反欺诈服务 Sift 的客户端，且在登录前即采集、枚举全网卡（含开 VPN 仍暴露的公网 IPv6）与 SIM 卡 MCC/MNC。
+   - <strong>Desktop 与 CLI 不读主板/硬盘硬件序列号</strong>：证伪了坊间“PC 端永久硬件封禁”的传言，但二者都会在<strong>未登录或使用第三方中转</strong>时把 <code>ant-did</code>、Sentry 时区/语言、以及第三方中转域名（<code>inference_host</code> / <code>apiBaseUrlHost</code>）明文上报给 Anthropic。
+   - <strong>Web 端依赖 Sift 1x1 GIF 隐蔽信标 + Datadog RUM + hCaptcha 证明链</strong>；进入复核阶段后，<strong>Persona KYC 会通过 WebRTC STUN（UDP）直接探测真实出口与内网 IP</strong>。</li>
+</ol>
+<hr />
+<h2 id="github">二、GitHub 逆向与审计仓库全景索引</h2>
+<p>本资料包的 <code>sources/</code> 目录已完整收录以下全部 18 份公开文档原文，按工程严谨度与证据等级排列：</p>
+<table>
+<thead>
+<tr>
+<th>证据等级</th>
+<th>原始仓库与在线链接</th>
+<th>压缩包内路径</th>
+<th>审计对象与方法</th>
+<th>核心发现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S 级</strong></td>
+<td><a href="https://github.com/B1anYu/claude-telemetry-audit/blob/main/README.md">B1anYu/claude-telemetry-audit</a></td>
+<td><code>sources/01-三端源码级遥测审计-B1anYu/</code>（5 篇）</td>
+<td>Desktop <code>2.9939.2</code>（asar+原生模块）、CLI <code>2.1.283</code>（2,153 模块）、Android <code>1.260930.20</code>（jadx+dex+AVD抓包）</td>
+<td>三端真实上行载荷全清单、未登录发包、中转域名明文上报、Desktop↔CLI 关联边界</td>
+</tr>
+<tr>
+<td><strong>S 级</strong></td>
+<td><a href="https://github.com/benbaobaoshigemi/ImNotDragon/blob/2ef76bd69117e23929e326d7b90825b6018f491b/CLAUDE_AND_KYC_RISK_AUDIT_REPORT.md">benbaobaoshigemi/ImNotDragon</a></td>
+<td><code>sources/02-Web与Android及Persona-KYC动态审计-ImNotDragon/CLAUDE_AND_KYC_RISK_AUDIT_REPORT.md</code></td>
+<td>Android 14 真机 DEX 逆向 + CDP 动态探针 + Persona KYC 实测</td>
+<td>Web 端 Sift 1x1 GIF 全参数、Datadog RUM、hCaptcha HSW、Persona WebRTC UDP 泄露</td>
+</tr>
+<tr>
+<td><strong>A 级</strong></td>
+<td><a href="https://github.com/BYK/loreai/blob/29a992a010c92f23c9d3c1f70419e59b27a81743/quality/CCH.md">BYK/loreai — CCH.md</a></td>
+<td><code>sources/03-ClaudeCode协议签名与隐写逆向/CCH.md</code></td>
+<td>Claude Code 二进制 <code>ptrace</code> 断点与反汇编</td>
+<td>还原 <code>cch</code> 请求体完整性哈希为 Zig/Bun 变体 xxHash64（非标准 <code>PRIME64_4</code>）</td>
+</tr>
+<tr>
+<td><strong>A 级</strong></td>
+<td><a href="https://github.com/pwguler/pengepul/blob/02ee7c2790c7c0e8d5717b48579efb75fc88037e/docs/research/claude-code-2.1.280-cloaking-audit.md">pwguler/pengepul — 2.1.280 审计</a></td>
+<td><code>sources/03-ClaudeCode协议签名与隐写逆向/claude-code-2.1.280-cloaking-audit.md</code></td>
+<td><code>@anthropic-ai/claude-code</code> <code>2.1.261</code>–<code>2.1.280</code> 源码对比</td>
+<td>精确盘点 Beta 旗标、请求头、归因块与服务端工具清单的版本演化</td>
+</tr>
+<tr>
+<td><strong>A 级</strong></td>
+<td><a href="https://github.com/6Kmfi6HP/opencode2api/blob/7a52cf223e7c1a714f6ce0804e0154c40ca2e3d0/docs/research-claude-code-behavior.md">6Kmfi6HP/opencode2api</a></td>
+<td><code>sources/03-ClaudeCode协议签名与隐写逆向/research-claude-code-behavior.md</code></td>
+<td>Claude Code <code>v2.1.123</code> 逆向与官方文档对照</td>
+<td>HTTP 头、OAuth 指纹、工具名黑名单（<code>todowrite</code>/<code>mcp_</code>）、SSE 契约</td>
+</tr>
+<tr>
+<td><strong>A 级</strong></td>
+<td><a href="https://github.com/itwanger/toBeBetterJavaer/blob/2103ede962c83b8e9133fe4a6eb6707c18dea40a/docs/src/sidebar/itwanger/ai/claude-code-steganography.md">itwanger/toBeBetterJavaer</a></td>
+<td><code>sources/03-ClaudeCode协议签名与隐写逆向/claude-code-steganography.md</code></td>
+<td>Claude Code <code>v2.1.91</code>–<code>v2.1.196</code> 混淆 JS 逆向</td>
+<td>Base64 + XOR(91) 解码 147+ 域名黑名单、3-bit 日期与 Unicode 撇号隐写术</td>
+</tr>
+<tr>
+<td><strong>B 级</strong></td>
+<td><a href="https://github.com/aaddrick/claude-desktop-debian/blob/62baae62d49739237c0d9dd458c08ab5a792f39a/docs/upstream-reports/780-device-registry.md">aaddrick/claude-desktop-debian #780</a></td>
+<td><code>sources/04-硬件锚定与本地状态边界/780-device-registry.md</code></td>
+<td><code>@ant/claude-native</code> 原生二进制逆向</td>
+<td>证实 Desktop <code>DeviceRegistry</code> 使用 macOS Secure Enclave / Windows TPM / Linux <code>5.1231.0+</code> TPM 2.0 硬件密钥签名</td>
+</tr>
+<tr>
+<td><strong>B 级</strong></td>
+<td><a href="https://github.com/ttfake92-lab/skills/blob/a146797c01ebfd48c12e4860416b99b6acdaf070/skills/claude-local-reset/references/research.md">ttfake92-lab/skills — research.md</a></td>
+<td><code>sources/04-硬件锚定与本地状态边界/claude-local-reset-research.md</code></td>
+<td>官方文档与社区 Issue/清理工具交叉核查</td>
+<td>厘清本地配置文件与服务端设备记录并非简单一对一关系，驳斥“清本地即免封”</td>
+</tr>
+<tr>
+<td><strong>C 级</strong></td>
+<td><a href="https://github.com/aceaura/blog/blob/c469e45769060f4c4d2e0a9aba92e557ad48d621/Claude_Max20x_%E5%B0%81%E5%8F%B7%E5%AE%A1%E6%9F%A5%E5%9B%A0%E7%B4%A0%E6%8A%A5%E5%91%8A.md">aceaura/blog — Max 20x 审查报告</a></td>
+<td><code>sources/05-封号审查汇总与关联域名清单/Claude_Max20x_封号审查因素报告.md</code></td>
+<td>官方政策、透明度报告与多源案例汇总</td>
+<td>双轨道模型、两条封号邮件文案、20 项审查因素与 3.3% 申诉率</td>
+</tr>
+<tr>
+<td><strong>C 级</strong></td>
+<td><a href="https://github.com/wquguru/one-exit/blob/main/clash-party/override.yaml">wquguru/one-exit</a> · <a href="https://github.com/songshikang0111/awesome-REA-cases/blob/44eb41e03cb99391130a766971f47a8846a72d2a/cases/one-exit-claude-rea-routing-telemetry-report.md">awesome-REA-cases 复核</a></td>
+<td><code>sources/05-封号审查汇总与关联域名清单/</code>（3 份）</td>
+<td>多端网络规则整理与第三方证据复核</td>
+<td>汇总 Claude 核心/遥测/风控/支付/KYC 关联域名与 Anthropic IP 段（<code>160.79.104.0/21</code>、ASN <code>399358</code>）</td>
+</tr>
+<tr>
+<td><strong>C 级</strong></td>
+<td><a href="https://github.com/wang-fu/blog/blob/4414eebac937274329e5a5c7a46424470e331d2e/docs/blog/ai/claude-ban-strategy.md">wang-fu/blog</a> · <a href="https://github.com/LinXiaoTao/FuckClaude/blob/082260335ff6cf1d22a5843368cc3689e9a574c9/src/content/guides/claude-steganography-and-risk-model.ts">LinXiaoTao/FuckClaude</a></td>
+<td><code>sources/05-封号审查汇总与关联域名清单/</code>（2 份）</td>
+<td>社区经验分析与风险自检工具源码</td>
+<td>服务端四层分类器推演与 <code>fuck-claude.vercel.app</code> 启发式模型对照</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">三、四端真实信号采集全景（源码与抓包实证）</h2>
+<h3 id="31">3.1 跨端核心指标对照表</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>Web (<code>claude.ai</code>)</th>
+<th>Android (<code>com.anthropic.claude</code>)</th>
+<th>Desktop（Electron）</th>
+<th>Claude Code CLI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>是否采集不可重置硬件 ID</strong></td>
+<td>否（浏览器复合指纹）</td>
+<td><strong>是：<code>ANDROID_ID</code> 原值</strong>直发 Sift（卸载重装不变）</td>
+<td><strong>否</strong>（<code>IOPlatformUUID</code>/<code>MachineGuid</code> 0 命中）</td>
+<td><strong>否</strong>（OTel 读过 <code>host.id</code> 后主动丢弃）</td>
+</tr>
+<tr>
+<td><strong>软件持久标识符</strong></td>
+<td>Cookie、Sift/Segment 匿名 ID</td>
+<td><code>Anthropic-Device-ID</code>、<code>AndroidKeyStore</code> TEE 密钥</td>
+<td><code>ant-did</code>（随机 UUID）、Secure Enclave/TPM P-256 密钥对</td>
+<td><code>~/.claude.json</code> 的随机 64-hex <code>userID</code> / <code>machineID</code></td>
+</tr>
+<tr>
+<td><strong>时区 / 语言上行通道</strong></td>
+<td>Sift GIF（<code>to</code>/<code>d</code>/<code>ft</code>/<code>l</code>）、Datadog RUM（每 30 秒）</td>
+<td>系统属性、Sift 设备属性、运营商/SIM</td>
+<td>Sentry <code>contexts.culture{locale, timezone}</code>（原值）</td>
+<td>遥测与 HTTP 头<strong>不含</strong>；经提示词与工具上下文注入</td>
+</tr>
+<tr>
+<td><strong>网络/地理侧泄露面</strong></td>
+<td>WebRTC（尤其 Persona KYC）、IPv6、QUIC</td>
+<td><strong>全网卡枚举含物理公网 IPv6</strong>（开 VPN 仍报）；SIM 卡 MCC/MNC（如 <code>46000</code>/<code>cn</code>）</td>
+<td><strong>未登录即发 3 条出站请求</strong>；后台服务独立出网</td>
+<td>模型请求体强带 <code>metadata.user_id</code>；出错回传网关响应头</td>
+</tr>
+<tr>
+<td><strong>第三方中转暴露</strong></td>
+<td>不适用</td>
+<td>不适用</td>
+<td><strong>明文上报</strong> <code>inference_host</code> / <code>inference_base_url</code></td>
+<td><strong>明文上报</strong> <code>apiBaseUrlHost</code>（GrowthBook 每 ~6 小时）</td>
+</tr>
+<tr>
+<td><strong>是否检测 Root / 自动化</strong></td>
+<td>检测 <code>navigator.webdriver</code>、<code>detectIncognito</code>、hCaptcha PoW</td>
+<td>检测 20+ <code>su</code> 路径、17 个 Root/LSPosed 包名、Play Integrity</td>
+<td>无 Root 检测；渲染层甚至主动桩化音视频设备枚举</td>
+<td>检测官方二进制签名特征（<code>cch</code>、Beta、Tool Schema）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-web-sift-1x1-gif">3.2 Web 端：Sift 1x1 GIF 隐蔽信标与证明链【源码/抓包实证】</h3>
+<p>根据 <code>ImNotDragon</code> 的 CDP 实测与脚本解包：</p>
+<ul>
+<li><strong>脚本载体</strong>：<code>https://s-cdn.anthropic.com/s.js</code>（约 57.9 KB Gzip），内嵌定制版 Sift Science、Crypto-js、<code>fingerprintjs2</code>、FingerprintJS v3 与 <code>detectIncognito</code>。</li>
+<li><strong>上报方式</strong>：不走常规 JSON POST，而是将完整环境与指纹序列化进 <code>GET https://s-cdn.anthropic.com/images/476833.gif?...</code> 查询串：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Query 参数</th>
+<th>典型中国环境值</th>
+<th>含义与来源 API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>to</code></td>
+<td><code>-480</code></td>
+<td><code>Date.prototype.getTimezoneOffset()</code>（UTC+8 为 <code>-480</code>）</td>
+</tr>
+<tr>
+<td><code>d</code></td>
+<td><code>0</code></td>
+<td>夏令时偏置（DST，美西夏令时为 <code>60</code>）</td>
+</tr>
+<tr>
+<td><code>ft</code></td>
+<td><code>Asia/Shanghai</code></td>
+<td><code>Intl.DateTimeFormat().resolvedOptions().timeZone</code></td>
+</tr>
+<tr>
+<td><code>l</code></td>
+<td><code>zh-CN</code></td>
+<td><code>navigator.language</code></td>
+</tr>
+<tr>
+<td><code>cf</code> / <code>fvch</code> / <code>fad</code> / <code>fmf</code></td>
+<td>哈希值</td>
+<td>Canvas 2D / WebGL GPU / AudioContext / 系统字体度量指纹</td>
+</tr>
+<tr>
+<td><code>inc</code> / <code>wd</code></td>
+<td><code>false</code> / <code>false</code></td>
+<td>隐身模式（<code>detectIncognito</code>）/ 自动化标识（<code>navigator.webdriver</code>）</td>
+</tr>
+<tr>
+<td><code>hc</code> / <code>fdm</code> / <code>tp</code></td>
+<td>硬件数值</td>
+<td>CPU 核心数、内存 GB 等级、最大触摸点数</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>实时 RUM 与人机证明</strong>：<code>claude.ai/api/v2/rum</code> 每 30 秒上报 <code>device.locale</code> 与 <code>device.time_zone</code>；注册与高敏操作通过 hCaptcha HSW Proof-of-Work 签发 <code>client_attestation</code>（<code>P1_*</code>）。</li>
+</ul>
+<h3 id="33-android">3.3 Android 端：全链路硬件与网络探针【源码/抓包实证】</h3>
+<p><code>B1anYu/android.md</code> 与 <code>ImNotDragon</code> 交叉证实 Android 客户端是防线最重的一端：</p>
+<ul>
+<li><strong>自实现 Sift 协议（非外部 SDK）</strong>：版本硬编码 <code>"1.3.1"</code>，向 <code>v3/accounts/{account}/mobile_events</code> 上报；挂载在 <code>Application.ActivityLifecycleCallbacks.onActivityCreated</code>，<strong>每个界面创建（含未登录启动）即触发采集</strong>。</li>
+<li><strong>核心泄露点</strong>：
+  1. <code>Settings.Secure.getString("android_id")</code> 原值上报（不加盐不哈希，卸载重装不重置）。
+  2. 枚举 <code>NetworkInterface.getNetworkInterfaces()</code> 并仅剔除回环地址，导致<strong>物理蜂窝/Wi-Fi 网卡分配的公网 IPv6 在开启 VPN 时照样上报</strong>，可反查真实运营商与省份。
+  3. <code>TelephonyManager</code> 读取 <code>getSimCountryIso()</code>、<code>getNetworkCountryIso()</code>、<code>getSimOperator()</code>（如 <code>46000</code>/<code>46011</code>）及运营商明文名称，与代理出口地形成直接冲突。
+  4. Root / Hook 检测清单（<code>/sbin/su</code>、<code>/system/xbin/su</code> 等路径与 <code>de.robv.android.xposed.installer</code> 等 17 个包名）+ <code>ro.debuggable</code> / <code>ro.secure</code>。
+  5. <code>AndroidKeyStore</code>（TEE / StrongBox）生成硬件非对称密钥对用于 <code>verify_magic_link</code> / <code>trusted_devices</code> 挑战签名 + Google Play Integrity 认证。</li>
+</ul>
+<h3 id="34-desktop-cli">3.4 Desktop 与 CLI：未登录发包、明文中转与跨端关联边界【源码/抓包实证】</h3>
+<p>这部分直接补齐了此前两份 Windows MSIX 静态逆向笔记中“未追深层遥测载荷”的空白：</p>
+<ul>
+<li><strong>Desktop 未登录（哪怕仅用 BYOK 第三方 Key）冷启动仍发出 3 条带 <code>ant-did</code> 的出站请求</strong>：
+  1. <code>POST https://claude.ai/api/event_logging/v2/batch</code>：携带 <code>install_id</code>（<code>ant-did</code>）、机型画像（<code>os_build</code>/<code>cpu_model</code>/<code>total_memory</code>），以及明文 <code>inference_provider</code> / <code>inference_host</code> / <code>inference_base_url</code>。
+  2. <code>GET https://api.anthropic.com/api/desktop/.../update?device_id=&lt;ant-did&gt;</code>：URL 明文携带安装 ID。
+  3. Sentry（<code>*.ingest.us.sentry.io</code>）：携带 <code>user.id = ant-did</code> 与 <code>contexts.culture{locale, timezone}</code>（如 <code>zh-CN</code>、<code>Asia/Shanghai</code>）。</li>
+<li><strong>Desktop 硬件锚定（DeviceRegistry）</strong>：不是读取主板序列号，而是调用 <code>@ant/claude-native</code> 的 <code>hardwareKeyGetOrCreate</code> 在 macOS Secure Enclave / Windows TPM / Linux（<code>5.1231.0+</code>）TPM 2.0 中生成随机 P-256 密钥对，将公钥注册到组织远程设备表并用于会话签名。</li>
+<li><strong>CLI 第一方判定陷阱</strong>：决定是否开启遥测的函数只检查 <code>CLAUDE_CODE_USE_BEDROCK</code>/<code>VERTEX</code>/<code>FOUNDRY</code> 与网关凭据，<strong>完全不看 <code>ANTHROPIC_BASE_URL</code></strong>。因此仅配置自建中转站时：</li>
+<li>一方事件流（<code>tengu_*</code>）与 GrowthBook 实验配置照常直连 <code>api.anthropic.com</code>；</li>
+<li>GrowthBook 会把 <code>new URL(ANTHROPIC_BASE_URL).host</code> 作为 <strong><code>apiBaseUrlHost</code> 明文上传</strong>；</li>
+<li>每次 <code>/v1/messages</code> 请求体强制注入 <code>metadata.user_id</code>（JSON 含 <code>device_id</code>、<code>account_uuid</code>、<code>session_id</code>，上限 512 字节），<strong>不属于遥测通道，任何遥测环境变量均无法关闭</strong>。</li>
+<li><strong>Desktop 与 CLI 是否关联成同一台机器</strong>：</li>
+<li><strong>强关联（必然成立）</strong>：在 Desktop 内部拉起 Claude Code / Cowork 会话时，同一条 <code>desktop_ccd_*</code> 事件同时写入 <code>install_id</code>、<code>account_uuid</code> 与 <code>cli_session_id</code>，且注入同一 OAuth Token。</li>
+<li><strong>独立终端运行 CLI 时</strong>：代码层不存在直接互通桥，且传输栈不同（Desktop 走 Chromium/Electron，CLI 走 axios/Bun fetch）；唯一机械关联是<strong>同一出口 IP + 时间窗</strong>，或两端同时存在同名插件/技能时服务端对滚动哈希的重算比对。</li>
+</ul>
+<h3 id="35-windows-msix5114925">3.5 与本地微信两份 Windows MSIX（<code>5.11492.5</code>）静态逆向笔记的交叉对照【源码/静态实证】</h3>
+<p>本资料包已将两份本地微信原件完整归档于 <code>sources/00-微信原件-Windows-Desktop逆向/</code>。这两份笔记（上篇《结构与组件》、下篇《机制与操作》）聚焦 Windows MSIX 版 Claude Desktop（Electron 45 / Chromium 156）的本地架构与安全边界，其 5 条与账号风控/遥测直接呼应的硬线索与 GitHub 多端逆向结论完全吻合：</p>
+<ol>
+<li><strong>账号状态与强认证接口面</strong>：渲染层存在 <code>/api/account/standing</code>、<code>/api/auth/trusted_devices</code>、<code>session_reattest/webauthn</code>、<code>step_up/webauthn</code> 与短信/MFA 校验接口，印证异常核验与设备信任主要锚定在服务端认证链路。</li>
+<li><strong>桌面端独立遥测与设备注册层</strong>：存在 <code>claude.ai/api/landfill/desktop/v1</code>、108 个 <code>desktop_*</code> 埋点、Worker 内 <code>rumEncoder</code> 以及 <code>DeviceRegistry</code>（32 方法）/ <code>DeviceStorage</code>（13 方法），与 <code>B1anYu/desktop.md</code> 及 <code>claude-desktop-debian #780</code> 的 TPM/Secure Enclave 注册机制互证。</li>
+<li><strong>未登录也会持续探测远端 + 后台服务独立出网</strong>：下篇第 6.5 节实测确认未登录状态下桌面壳仍持续探测 <code>api.anthropic.com</code>；同时 <code>CoworkVMServiceStore</code> 以 <code>LocalSystem</code> 自动运行并自带 <code>gVisor</code> 网络栈，若未统一接管网络容易走直连。</li>
+<li><strong>反常识实证（辟谣“全盘硬件指纹壳”）</strong>：下篇第 7 节发现渲染层主动将 <code>MediaDevices.prototype.enumerateDevices</code> 改写成返回空 <code>deviceId/label</code> 的桩对象，与 <code>B1anYu</code> 证实的“PC 端不读主板硬件序列号”结论一致。</li>
+<li><strong>跨 Profile / Chrome 登录态导入</strong>：主进程实现了 Chromium <code>os_crypt</code> 跨 Profile 状态判定与 <code>importChromeLogins</code>，提示混用浏览器 Profile 或跨环境导入 Cookie 会带来会话关联。</li>
+</ol>
+<hr />
+<h2 id="_3">四、克劳德封号机制的四大核心触发链路</h2>
+<h3 id="41">4.1 链路一：环境与地理立体交叉校验（外围域名分裂是高频雷区）</h3>
+<p>当账号触发环境风控时，常见封号文案为：</p>
+<blockquote>
+<p><code>An internal investigation of suspicious signals associated with your account indicates a violation of our Usage Policy.</code></p>
+</blockquote>
+<p>核心触发条件在于<strong>多维信号不一致</strong>，尤其容易在<strong>外围域名出口分裂</strong>时暴露。依据 <code>B1anYu</code>、<code>ImNotDragon</code> 与 <code>one-exit</code> 汇总，与 Claude 账号风控强关联的域名生态涵盖五大类：</p>
+<table>
+<thead>
+<tr>
+<th>类别</th>
+<th>关键域名 / IP 段</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>核心业务与认证</strong></td>
+<td><code>claude.ai</code>、<code>claude.com</code>、<code>clau.de</code>、<code>api.anthropic.com</code>、<code>claudeusercontent.com</code>、<code>portal.anthropic.com</code>；IP 段 <code>160.79.104.0/21</code>（ASN <code>399358</code>）</td>
+<td>登录、对话、API 推理、账号状态查询（<code>/api/account/standing</code>）</td>
+</tr>
+<tr>
+<td><strong>反欺诈与设备指纹</strong></td>
+<td><code>s-cdn.anthropic.com</code>、<code>siftscience.com</code>、<code>segment.io</code></td>
+<td>Sift Web 1x1 GIF、Android 设备与网卡指纹、用户行为追踪</td>
+</tr>
+<tr>
+<td><strong>观测与实验门控</strong></td>
+<td><code>sentry.io</code>、<code>*.ingest.us.sentry.io</code>、<code>datadoghq.com</code>、<code>browser-intake-*</code>、<code>growthbook.io</code></td>
+<td>桌面端 <code>culture</code> 时区/语言、Web RUM、CLI <code>apiBaseUrlHost</code></td>
+</tr>
+<tr>
+<td><strong>人机验证与支付</strong></td>
+<td><code>hcaptcha.com</code>、<code>challenges.cloudflare.com</code>、<code>stripe.com</code>、<code>stripe.network</code>、<code>stripecdn.com</code>、<code>recaptcha.net</code></td>
+<td>注册/高敏 PoW 证明、卡头与账单风控</td>
+</tr>
+<tr>
+<td><strong>身份核验（KYC）</strong></td>
+<td><code>withpersona.com</code>、<code>inquiry.withpersona.com</code>、<code>tg.withpersona.com</code>、<code>fp-us-365.withpersona.com</code>、<code>webrtc-consumer.withpersona.com</code></td>
+<td>账号 Hold 解封时的 3D 活体、证件审查与 WebRTC STUN 探测</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-oauth-cch">4.2 链路二：反套利与客户端真伪校验（订阅 OAuth 封堵与 <code>cch</code> 签名）</h3>
+<p>2026 年 1 月起，Anthropic 将“消费级 Pro/Max 订阅 OAuth Token 挪用于非官方客户端（包括 OpenCode、Cline、各类中转桥，甚至 Anthropic 自家 Agent SDK）”及“账号拼车/转售/自动化批处理”列为头号治理目标。服务端校验已演进到协议载荷深层【源码/抓包实证】：</p>
+<ol>
+<li><strong>System Prompt 首块归因头</strong>：官方 Claude Code 每次请求会在 <code>system[0]</code> 写入：
+   <code>text
+   x-anthropic-billing-header: cc_version=&lt;version&gt;.&lt;3-char-fp&gt;; cc_entrypoint=&lt;entrypoint&gt;; cch=&lt;5-hex&gt;;</code>
+   紧随官方身份声明块 <code>You are Claude Code, Anthropic's official CLI for Claude.</code>。</li>
+<li><strong><code>cch</code> 请求完整性哈希（<code>BYK/loreai</code> 逆向证实）</strong>：
+   - 将序列化后的请求体（含占位符 <code>cch=00000;</code>）输入 <strong>Bun / Zig 标准库变体的 xxHash64</strong>，取低 20 位转 5 位小写十六进制。
+   - 关键工程特征：该实现使用了非标准常数 <code>PRIME64_4 = 0x85ebca77c2b2ae63</code>（标准 xxHash64 为 <code>0x85ebca6b3b7b36ef</code>），近期版本种子为 <code>0x4d659218e32a3268</code>。</li>
+<li><strong>版本漂移指纹与工具形状门控</strong>：
+   - <code>anthropic-beta</code> 集合随版本精确增减并按模型代际门控（如 <code>claude-code-20250219</code>、<code>oauth-2025-04-20</code>、<code>mid-conversation-system-2026-04-07</code> 等）。
+   - 工具命名受服务端校验（如黑名单 <code>todowrite</code>、拒收 <code>mcp_</code> 前缀、偏好官方 PascalCase 工具集）。
+   - OAuth 令牌交换阶段在不同版本曾校验底层 HTTP 客户端指纹（如早期 <code>axios/1.13.6</code> 特征，v2.1.195 起迁移至原生 fetch）。</li>
+</ol>
+<h3 id="43-3-bit">4.3 链路三：反蒸馏与中转溯源（3-bit 提示词隐写术实证）</h3>
+<p>在 2026 年 4 月 2 日（<code>v2.1.91</code>）至 2026 年 7 月 1 日（<code>v2.1.196</code>）期间，官方 Claude Code CLI 曾静默部署了一套穿透代理的<strong>格式隐写机制</strong>（Anthropic 事后承认其为反代充/反蒸馏实验，并于 <code>v2.1.197</code> 移除）【源码实证】：</p>
+<ul>
+<li><strong>触发条件</strong>：仅当设置了非官方 <code>ANTHROPIC_BASE_URL</code> 时执行。</li>
+<li><strong>信号来源</strong>：
+  1. 系统时区是否命中 <code>Asia/Shanghai</code> 或 <code>Asia/Urumqi</code>（1 bit）。
+  2. <code>ANTHROPIC_BASE_URL</code> 域名是否命中内置 <strong>Base64 + XOR(key=91)</strong> 解码后的 147+ 国内企业/中转域名表（如 <code>*.cn</code>、<code>baidu.com</code>、<code>alibaba-inc.com</code>、<code>bytedance.net</code>、<code>anyrouter.top</code> 等，1 bit）或 11 个国内 AI 实验室关键词（<code>deepseek</code>、<code>moonshot</code>、<code>minimax</code>、<code>zhipu</code>、<code>dashscope</code>、<code>volces</code> 等，1 bit）。</li>
+<li><strong>隐写编码表（嵌入系统提示词 <code>Today's date is YYYY-MM-DD</code>）</strong>：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>隐写维度</th>
+<th>编码字符 / 格式</th>
+<th>对应含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>日期分隔符（1 bit）</td>
+<td><code>2026-06-30</code> vs <code>2026/06/30</code></td>
+<td>短横线 = 非中国时区；<strong>斜杠 = 命中 <code>Asia/Shanghai</code> 或 <code>Asia/Urumqi</code></strong></td>
+</tr>
+<tr>
+<td><code>Today's</code> 撇号（2 bit）</td>
+<td><code>'</code> (<code>U+0027</code>)</td>
+<td>均未命中</td>
+</tr>
+<tr>
+<td><code>Today’s</code> 撇号（2 bit）</td>
+<td><code>’</code> (<code>U+2019</code>)</td>
+<td>命中 147+ 域名黑名单</td>
+</tr>
+<tr>
+<td><code>Todayʼs</code> 撇号（2 bit）</td>
+<td><code>ʼ</code> (<code>U+02BC</code>)</td>
+<td>命中 AI 实验室关键词</td>
+</tr>
+<tr>
+<td><code>Todayʹs</code> 撇号（2 bit）</td>
+<td><code>ʹ</code> (<code>U+02B9</code>)</td>
+<td>同时命中域名表与 AI 实验室关键词</td>
+</tr>
+</tbody>
+</table>
+<p>此外，安全研究者还观察到部分封禁通知邮件内含 <strong>1x1 追踪像素（tracking pixel）</strong>，在非代理环境下加载邮件图片即可向服务端回传真实 IP 与设备信息。</p>
+<h3 id="44-persona-3d-kyc">4.4 链路四：支付风控、服务端行为分类器与 Persona 3D KYC</h3>
+<ol>
+<li><strong>支付与账单核验（高频“升级/续费瞬间秒封”）</strong>【官方/多源证据】：代充（付款人与账号持有人不一致）、高风险虚拟/预付卡 BIN、发卡国/账单国/IP 属地冲突、拒付（chargeback）或 VoIP 接码号，均会触发 Stripe 与内部反欺诈拦截。</li>
+<li><strong>行为与内容分类器（<code>automatic review of your recent activities</code>）</strong>【官方/多源+服务端推断】：
+   - 重度编码用量本身只触发<strong>限流（throttle）</strong>；但“多 IP 并发 + 异常吞吐 + 批量类蒸馏模式 + AUP 违规内容（恶意软件、未满 18 岁等）”会触发自动封禁，并通过支付卡、IP、设备标识波及关联账号。
+   - 官方亦承认分类器存在误封（如 2026 年初收紧期间及部分扩展/后台子进程误触发案例），但普通用户申诉复核成功率极低（≈ 3.3%）。</li>
+<li><strong>Persona 3D 活体 KYC 终审</strong>【源码/抓包实证】：
+   - 2026 年 7 月起，部分被标记账号需经 <code>portal.anthropic.com</code>（<code>PassportVerificationPortalService</code>）转入 Persona（<code>inquiry.withpersona.com</code>）提交政府证件与 3D 活体人脸。
+   - 除 <code>tg.withpersona.com</code> / <code>fp-us-365.withpersona.com</code> 采集设备画像外，Persona 还会向 <code>webrtc-consumer.withpersona.com</code> 发起 <strong>WebRTC STUN（UDP 报文）</strong>——在仅配置常规 HTTP 代理的浏览器环境中，UDP 会直接绕过代理经物理网卡发出，向服务端暴露真实公网与局域网 IP。</li>
+</ol>
+<hr />
+<h2 id="5">五、源码逆向直接证伪的 5 个常见误区</h2>
+<ol>
+<li><strong>误区一：“PC 端会读取主板/硬盘序列号做永久硬件封禁”</strong><br />
+   → <strong>证伪</strong>：Desktop 与 CLI 源码均不采集物理硬件序列号（桌面端 <code>ant-did</code>、CLI <code>userID</code>/<code>machineID</code> 均为随机值，Secure Enclave/TPM 也仅是随机生成的注册密钥对）。<strong>真正上报不可重置系统硬码（<code>ANDROID_ID</code> 原值）和物理网卡 IPv6 的是 Android App。</strong></li>
+<li><strong>误区二：“只把 <code>ANTHROPIC_BASE_URL</code> 指向自建中转，Anthropic 就完全看不到”</strong><br />
+   → <strong>证伪</strong>：CLI 第一方判定不看 <code>ANTHROPIC_BASE_URL</code>，GrowthBook 仍定时直连官方并明文上报 <code>apiBaseUrlHost</code>；Desktop 未登录也会在一方事件里明文上报 <code>inference_host</code>。</li>
+<li><strong>误区三：“配置 <code>DISABLE_TELEMETRY=1</code> 就彻底静默”</strong><br />
+   → <strong>证伪</strong>：CLI 的遥测变量对 Desktop 完全无效；在 CLI 内，每次 <code>/v1/messages</code> 请求体强制携带的 <code>metadata.user_id</code> 属于推理载荷而非遥测通道，任何遥测开关都无法关掉。</li>
+<li><strong>误区四：“同一台电脑同时装 Desktop 和 CLI 一定会本地互通连坐”</strong><br />
+   → <strong>修正</strong>：独立终端跑 CLI 与未登录 Desktop 在代码层面没有直接桥接；真正产生硬关联的是<strong>在 Desktop 内直接启动 Code/Cowork 会话</strong>，或两端共用同一出口 IP 与时间窗。</li>
+<li><strong>误区五：“<code>fuck-claude.vercel.app</code> 或同类检测页跑出低分就代表安全”</strong><br />
+   → <strong>证伪</strong>：这类社区工具只覆盖浏览器表层启发式特征（且 <code>curl</code> 与浏览器实测结果截然不同），完全测不到 OAuth/<code>cch</code> 载荷校验、支付卡 BIN 与账单一致性、外围遥测域名出口分裂、Android <code>ANDROID_ID</code>/IPv6 泄露以及服务端行为分类器。</li>
+</ol>
+<hr />
+<h2 id="_4">六、研究边界与声明</h2>
+<ul>
+<li>本汇编仅用于安全研究、隐私透明度评估与技术交流，所有结论均基于公开可复核的 GitHub 逆向报告、客户端静态/动态分析记录及官方公开政策整理。</li>
+<li>Anthropic 后端风控规则、特征权重与判定阈值属闭源服务端逻辑，会随版本持续演化；本报告不构成任何官方结论或合规保证。</li>
+<li><code>sources/</code> 目录下各原始文档的著作权与开源许可（如 <code>B1anYu/claude-telemetry-audit</code> 的 CC BY 4.0 等）均归原作者所有，引用或再分发请保留原仓库链接与署名。</li>
+</ul>
+    </main>
+  </div>
+</body>
+</html>

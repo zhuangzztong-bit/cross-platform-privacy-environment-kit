@@ -1,0 +1,86 @@
+[
+  {
+    "remarks": "Block QUIC UDP 443",
+    "network": "udp",
+    "port": "443",
+    "outboundTag": "block",
+    "enabled": true
+  },
+  {
+    "remarks": "Block Anthropic IPv6 (502 guard)",
+    "ip": [
+      "2607:6bc0::/48",
+      "2607:6bc0:11::/48"
+    ],
+    "outboundTag": "block",
+    "enabled": true
+  },
+  {
+    "remarks": "Claude and peripheral ecosystem",
+    "domain": [
+      "domain:claude.ai",
+      "domain:claude.com",
+      "domain:clau.de",
+      "domain:anthropic.com",
+      "domain:claudeusercontent.com",
+      "domain:claudemcpcontent.com",
+      "domain:modelcontextprotocol.io",
+      "domain:sentry.io",
+      "domain:datadoghq.com",
+      "keyword:browser-intake",
+      "domain:growthbook.io",
+      "domain:segment.io",
+      "domain:siftscience.com",
+      "domain:usefathom.com",
+      "domain:hcaptcha.com",
+      "domain:challenges.cloudflare.com",
+      "domain:recaptcha.net",
+      "domain:stripe.com",
+      "domain:stripe.network",
+      "domain:stripecdn.com",
+      "domain:intercom.io",
+      "domain:intercomcdn.com",
+      "domain:withpersona.com"
+    ],
+    "outboundTag": "proxy",
+    "enabled": true
+  },
+  {
+    "remarks": "Anthropic IPv4 CIDR",
+    "ip": [
+      "160.79.104.0/21"
+    ],
+    "outboundTag": "proxy",
+    "enabled": true
+  },
+  {
+    "remarks": "Local domains",
+    "domain": [
+      "geosite:private"
+    ],
+    "outboundTag": "direct",
+    "enabled": true
+  },
+  {
+    "remarks": "Local address ranges",
+    "ip": [
+      "10.0.0.0/8",
+      "100.64.0.0/10",
+      "127.0.0.0/8",
+      "169.254.0.0/16",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "::1/128",
+      "fd00::/8",
+      "fe80::/10"
+    ],
+    "outboundTag": "direct",
+    "enabled": true
+  },
+  {
+    "remarks": "Remaining traffic",
+    "port": "0-65535",
+    "outboundTag": "proxy",
+    "enabled": true
+  }
+]
