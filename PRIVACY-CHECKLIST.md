@@ -18,4 +18,17 @@
 
 本地网络诊断可验证指定连接和特定故障条件。是否符合 Anthropic 的服务范围按官方地区政策判断，包含用户实际所在地。没有公开依据表明指纹测试评分能预测账号处置。包里的脚本不要求你提供账号凭据。[Anthropic 地区政策](https://www.anthropic.com/legal/supported-regions)
 
+## Microsoft Edge 浏览器专用配置清单
+
+本工具包的路由、远端 DoH、物理网卡 DNS 53 封堵与断网开关均工作在系统/代理层，可直接适配 Microsoft Edge。为防止 Edge 内置网络特性绕过本地代理规则或与日常浏览环境混用，建议按以下清单核对：
+
+| 配置项 | 推荐做法（Edge 设置路径） | 作用与原因 |
+| --- | --- | --- |
+| **独立配置文件（Profile）** | 右上角头像 → 添加独立配置文件，**不登录微软账户**或关闭「同步」 | 与日常浏览、国内站点及云端同步数据隔离 |
+| **关闭内置安全 DNS（DoH）** | `edge://settings/privacy` → 安全性 → 关闭「使用安全 DNS 指定如何查找网站的网络地址」 | 避免 Edge 直接向第三方 DoH 发起解析，确保所有域名解析统一交由代理客户端（TUN + 远端 DoH）接管 |
+| **关闭 Edge 安全网络（内置 VPN）** | `edge://settings/privacy` → 安全性 → 关闭「Microsoft Edge 安全网络」 | 防止内置代理与 `v2rayN` / 系统 TUN 冲突或形成多出口分裂 |
+| **站点权限收紧** | `edge://settings/content` → 将「位置」设为「阻止」或「询问」，关闭无关站点的「本地网络访问」 | 防止网页读取浏览器定位或探测局域网/本机服务 |
+| **代理接管方式** | 优先使用代理客户端的 **TUN 模式**（或确认系统代理已生效，且未启用分流豁免） | 系统层 TUN 可统一接管 Edge 的全部 TCP/UDP 流量；配工具包路由规则阻断 `udp/443`（QUIC）后会自动回落至 HTTPS/TCP |
+| **可选：停用实验性 QUIC** | 如仅使用系统 HTTP/SOCKS 代理而非 TUN，可在 `edge://flags/#enable-quic` 将 Experimental QUIC protocol 设为 `Disabled` | 减少浏览器通过 UDP/443 绕过普通 HTTP 代理的可能 |
+
 更多基于逆向研究报告的代理层优化与边界说明，见 [CLAUDE-PROXY-OPTIMIZATION-GUIDE.md](CLAUDE-PROXY-OPTIMIZATION-GUIDE.md)。

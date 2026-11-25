@@ -27,9 +27,12 @@
 | Windows | `py -3 .\environment_report.py` 与 `py -3 .\audit_client_boundary.py` 生成只读脱敏报告。 |
 | macOS | `python3 environment_report.py` 与 `python3 audit_client_boundary.py` 汇总路由、DNS、边界和 Claude 文件概要。 |
 | Linux | `python3 environment_report.py` 与 `python3 audit_client_boundary.py` 汇总路由、DNS、边界和 Claude 文件概要。 |
+| Edge / Chrome | 代理客户端开启 TUN 或系统代理即可适配；Edge 需按 [PRIVACY-CHECKLIST.md（Edge 专用配置清单）](PRIVACY-CHECKLIST.md#microsoft-edge-浏览器专用配置清单) 关闭内置安全 DNS 与 Edge 安全网络并使用独立 Profile。 |
 | Android | [mobile/README.md](mobile/README.md) 扫码或剪贴板导入 `v2rayNG` Claude 生态规则、配置 DoH 并核查防漏开关与原生 App 边界。 |
 | iPhone／iPad | [mobile/README.md](mobile/README.md) 导入已开启 IPv6 隧道接管的 Shadowrocket 模板并验收。 |
 | 深度资料 | [CLAUDE-PROXY-OPTIMIZATION-GUIDE.md](CLAUDE-PROXY-OPTIMIZATION-GUIDE.md) 与 [离线综合报告 HTML](research-reports/克劳德封号机制与逆向报告完整汇编-含微信原件-2026-11-22/00-克劳德封号机制与逆向研究完整综合报告.html)。 |
+
+> **克隆后开箱说明**：所有 Python 脚本仅使用 Python 3.10+ 标准库（无需 `pip install`）。本仓库不包含代理软件本体与节点，下载后需自行准备代理客户端（如 Windows `v2rayN` / Android `v2rayNG` / iOS `Shadowrocket`）及合规节点，并按需导入本仓库规则文件与核对 [PRIVACY-CHECKLIST.md](PRIVACY-CHECKLIST.md)。
 
 ### Claude Code 文件保护
 

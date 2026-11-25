@@ -65,7 +65,7 @@ class ConfigSnapshotTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "nt", "Requires Windows NTFS ACLs")
     def test_windows_snapshot_directory_removes_inherited_shared_user_acls(self):
         path = self.create()
-        out = subprocess.check_output(["icacls", str(path)], text=True)
+        out = subprocess.check_output(["icacls", str(path)], text=True, encoding="mbcs", errors="replace")
         for shared_principal in ("BUILTIN\\Users", "NT AUTHORITY\\Authenticated Users", "Everyone"):
             self.assertNotIn(shared_principal, out)
 
